@@ -131,6 +131,10 @@ export default {
 							} else if (e.keyCode === 27) {
 								if (this.isOpen) {
 									this.close()
+									// Re-focus head on close
+									requestAnimationFrame(() => {
+										(this.dom.childNodes[0] as HTMLElement).focus()
+									})
 								}
 							}
 						}
@@ -148,6 +152,10 @@ export default {
 										this.value = o.value
 										this.isFocused = false
 										this.close()
+										// Re-focus head on close
+										requestAnimationFrame(() => {
+											(this.dom.childNodes[0] as HTMLElement).focus()
+										})
 										onSelect && onSelect(o.value)
 									},
 									onkeydown: (e: KeyboardEvent) => {
@@ -156,10 +164,18 @@ export default {
 											this.value = o.value
 											this.isFocused = false
 											this.close()
+											// Re-focus head on close
+											requestAnimationFrame(() => {
+												(this.dom.childNodes[0] as HTMLElement).focus()
+											})
 											onSelect && onSelect(o.value)
 										} else if (e.keyCode === 27) {
 											// Escape closes
 											this.close()
+											// Re-focus head on close
+											requestAnimationFrame(() => {
+												(this.dom.childNodes[0] as HTMLElement).focus()
+											})
 										} else if (e.keyCode === 37 || e.keyCode === 38) {
 											// Left or up keys - focus previous
 											const i = pmod(index - 1, options.length)
