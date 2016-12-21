@@ -28,13 +28,9 @@ interface State {
 }
 
 /**
- * Elements will blur THEN focus, so there is a moment where none of the
- * select's elements will be focused. In order to prevent closing the
- * select in these cases, we delay long enough to be sure no elements
- * are going to be focused and that the select should really close.
+ * Standalone event handler that can be bound, then attached
+ * and detached on component remove.
  */
-const BLUR_DELAY = 50
-
 function onFocus (this: MSelect, el: HTMLElement, e: FocusEvent) {
 	console.log('global focus event element:', e.target)
 	if (e.target instanceof Node && el.contains(e.target)) {
@@ -43,17 +39,24 @@ function onFocus (this: MSelect, el: HTMLElement, e: FocusEvent) {
 	}
 }
 
+/**
+ * Standalone event handler
+ */
 function onBlur (this: MSelect, el: HTMLElement, e: FocusEvent) {
 	console.log('global blur event element:', e.target)
 	if (e.target instanceof Node && el.contains(e.target)) {
 		console.log('child blur event')
 		this.isFocused = false
-		setTimeout(() => {
+		// Elements will blur THEN focus, so there is a moment where none of the
+		// select's elements will be focused. In order to prevent closing the
+		// select in these cases, we delay a frame to be sure no elements
+		// are going to be focused and that the select should really close.
+		requestAnimationFrame(() => {
 			if (this.isOpen && !this.isFocused) {
 				this.isOpen = false
 				m.redraw()
 			}
-		}, BLUR_DELAY)
+		})
 	}
 }
 
@@ -137,10 +140,10 @@ export default {
 				m('.m-select-body',
 					{class: this.isOpen ? 'm-select-body-open' : undefined},
 					m('.m-select-options',
-						options.map(o =>
+						options.map((o, index) =>
 							m('.m-select-option',
 								{
-									tabIndex: '0',
+									tabIndex: '-1',
 									onclick: (e: Event) => {
 										this.value = o.value
 										this.isFocused = false
@@ -148,13 +151,32 @@ export default {
 										onSelect && onSelect(o.value)
 									},
 									onkeydown: (e: KeyboardEvent) => {
-										if (e.keyCode === 13 || e.keyCode === 32) {
+										if (e.keyCode === 13) {
+											// Enter selects
 											this.value = o.value
 											this.isFocused = false
 											this.close()
 											onSelect && onSelect(o.value)
 										} else if (e.keyCode === 27) {
+											// Escape closes
 											this.close()
+										} else if (e.keyCode === 37 || e.keyCode === 38) {
+											// Left or up keys - focus previous
+											const i = pmod(index - 1, options.length)
+											const elOpt = this.dom.childNodes[1].childNodes[0].childNodes[i] as HTMLElement
+											console.log(`focusing [${i}]:`, elOpt)
+											// Must delay a frame before focusing
+											requestAnimationFrame(() => {
+												elOpt.focus()
+											})
+										} else if (e.keyCode === 39 || e.keyCode === 40) {
+											// Right or down keys - focus next
+											const i = pmod(index + 1, options.length)
+											const elOpt = this.dom.childNodes[1].childNodes[0].childNodes[i] as HTMLElement
+											console.log(`focusing [${i}]:`, elOpt)
+											requestAnimationFrame(() => {
+												elOpt.focus()
+											})
 										}
 									}
 								},
@@ -181,10 +203,7 @@ export default {
 		// either the currently selected option or the first one
 		// (like a native browser select.)
 		// Then we want to allow the arrow keys to move up & down.
-		// BUT FOR THE LIFE OF ME I CANNOT GET THE OPTIONS TO FOCUS :(
-		// This may have something to do with the redraw de-focusing...
-		// To be continued...
-		/*if (options && options.length > 0) {
+		if (options && options.length > 0) {
 			let i = 0
 			if (this.value) {
 				i = options.findIndex(o => o.value === this.value) as number
@@ -193,8 +212,11 @@ export default {
 			}
 			const elOpt = this.dom.childNodes[1].childNodes[0].childNodes[i] as HTMLElement
 			console.log(`focusing [${i}]:`, elOpt)
-			elOpt.focus()
-		}*/
+			// Must delay a frame before focusing
+			requestAnimationFrame(() => {
+				elOpt.focus()
+			})
+		}
 	},
 
 	close() {
@@ -202,3 +224,8 @@ export default {
 	}
 
 } as MSelect
+
+/**  Always positive modulus */
+function pmod (n: number, m: number) {
+	return ((n % m + m) % m)
+}
